@@ -1,0 +1,14 @@
+{
+    "id": "4e6fe1404b90c00032eeac34",
+    "type": "checkin",
+    "user": {
+        "id": "1",
+        "firstName": "Jimmy",
+        "lastName": "Foursquare",
+        "photo": "https://foursquare.com/img/blank_boy.png",
+    },
+    "venue": {
+        "id": "4b888a6af964a5205dff31e3",
+        "name": "hoffsilo",
+    }
+}

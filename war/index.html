@@ -1,11 +1,11 @@
 <html>
 <head>
   <title>4sq menorah</title>
-  <link rel="stylesheet" href="http://twitter.github.com/bootstrap/1.4.0/bootstrap.min.css"/>
-<link type="text/css" rel="stylesheet" media="all" href="/static/style.css"/>
-<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script>
-<script type="text/javascript" src="/_ah/channel/jsapi"></script>
-<script type="text/javascript" src="/static/script.js"></script>
+  <link rel="stylesheet" href="/static/bootstrap.min.css"/>
+  <link type="text/css" rel="stylesheet" media="all" href="/static/style.css"/>
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.0/jquery.min.js"></script>
+  <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+  <script type="text/javascript" src="/static/script.js"></script>
 </head>
 <body>
   <div id="wrapper" class="container-fluid">
@@ -16,111 +16,196 @@
       <div id="lastCheckin">
           <div id="picWrapper">
             <img id="userPic" src=""/>
-            <img id="userCrown" src="/static/crown.png"/>
+            <img id="userCrown" src="/static/star.png"/>
           </div>
           <h1 id="message"></h1>
       </div>
-      <div id="herenow">
-        <div id="people"></div>
-        <h2><span id="count">0</span> here @ <span id="placeName"></h2>
+      <div id="menorah">
+        <div id="shamashStar"><img src="/static/star.png"/></div>
+        <img src="/static/menorah.png"/>
       </div>
     </div>
     <div id="connect" style="display:none">
       To use this widget, you need to connect to foursquare.<br />
-      <a id="connectLink"><img src="/static/connect-white.png" /></a>
+      <a id="connectLink" href="#"><img src="/static/connect-white.png" /></a>
+    </div>
+    <div id="vidDiv" style="display:none">
+      <form id="vidForm">
+        Enter venueid (e.g. https://foursquare.com/v/my-hood/<b>venueid</b>): <input type="text" id="vidInput" />
+        <input type="submit" value="GO" />
+      </form>
     </div>
   </div>
 
 <script type="text/javascript">
+  var DEVEL = false;
+  var currentCandle = 0;
+  var devMayor = {
+	 isMayor: true,
+	 name: 'Jon H.',
+	 photo: 'https://img-s.foursquare.com/userpix_thumbs/BIDGSHDF1DGYN2GP.jpg'
+  };
+  
+  var dev1 = {
+		name: 'Susan L.',
+		photo: 'https://img-s.foursquare.com/userpix_thumbs/TOSC43NPJHNOCPIX.jpg'
+  };
+  
+  var dev2 = {
+    name: 'Anna F.',
+    photo: 'https://img-s.foursquare.com/userpix_thumbs/5G0ECSRUBSCA53I4.jpg'
+  };
+  
+  var dev3 = {
+    name: 'Jorge O.',
+    photo: 'https://img-s.foursquare.com/userpix_thumbs/4a5e36cdcc36b.jpg'
+  };
+  
+  var devList = [dev1, devMayor, dev2, dev3];
+  
+  function updateCandle(checkin) {
+	    if (checkin.isMayor) {
+	    	$('#shamash').show();
+	    	$('#shamashStar').show();
+        $('#shamash img').attr('src', checkin.photo);
+      } else {
+    	  var id = '#candle' + (currentCandle%8);
+    	  $(id).show();
+        $(id + ' img').attr('src', checkin.photo);
+        currentCandle++;
+      }
+  }
+  
+  // Load in the data from a new checkin
+  function updatePush(checkin) {
+    $('#userPic').attr('src', checkin.photo);
+    if (checkin.isMayor) {
+      $('#picWrapper').addClass('isMayor');
+      $('#message').html('Welcome fire master, <span class="name">' + checkin.name + '</span>!');
+    } else {
+      $('#picWrapper').removeClass('isMayor');
+      $('#message').html('Happy hanukkah, <span class="name">'
+          + checkin.name + '!!</span>. Spin that driedle!!');
+    }
+  }
+
+  function updateHereNow(data) {
+	     $('.candle').hide();
+	     $('#shamashStar').hide();
+      currentCandle = 0;
+      if (data.checkins.length > 0) { updatePush(data.checkins[0]); }
+
+      for (c in data.checkins) {
+    	  updateCandle(data.checkins[c]);
+      }
+  }
+  
+  function candleImage(id) {
+	  var h = '<div id="'+id+'" class="candle" style="display:none">';
+	  h += '<img src="/static/star.png"/>';
+	  h +='</div>';
+	  return h;
+  }
   $(function(){
+	  var menorah = $('#menorah');
+	  menorah.append(candleImage("shamash"));
+	  for (i = 0; i < 8; i++) {
+		  menorah.append(candleImage("candle"+i));
+	  }
 	  // Channel business
 	  var connected = false;
 	  var vid = '';
+	  var accessToken = '';
   	// Fetch the whole herenow for a venue and load it in (1 time every 2 minutes)
-  	var loadHereNow = function(firstTime) {
-  	  // If the channel is closed, request the server to send us a new one
-  	  var tackOn = '';
-  	  if (!connected) { tackOn = '&channel=request'; }
-  	  $.getJSON('/herenow?vid='+vid+tackOn, function(data) {
-  	    // Handle opening the channel on our end if we just got a new one
-  	    if (!(typeof(data.token) === 'undefined')) { refreshChannel(data.token); }
-  	    
-  	    if (firstTime) { updatePush(data.checkins[0]); }
-  
-  	    // Load all the contents in at once to avoid a cascade flicker
-  	    var newContents = $('<div></div>');
-  	    for (c in data.checkins) {
-  	      var checkin = data.checkins[c]
-  	      var personCard = $('<div class="person"></div>');
-  	      personCard.append($('<img src="'+checkin.photo+'"/><div class="name">'+checkin.name+'</div>'));
-  	      if (checkin.isMayor) {
-  	        personCard.addClass('isMayor');
-  	        personCard.prepend('<img id="userCrown" src="/static/crown.png"/>');
-  	      }
-  	      newContents.append(personCard)
-  	    }
-  	    
-  	    $('#count').html(data.herenow + " people");
-  	    $('#people').html(newContents);
-  
-  	    window.setTimeout(loadHereNow, 120000);
+  	function loadHereNow() {
+  	  $.getJSON('https://api.foursquare.com/v2/venues/'+vid+'/herenow?v=20111220&oauth_token='+accessToken, function(data) {
+  		  if (data.response) {
+  			  console.log(data);
+  			  var checkins = [];
+  			  for (i in data.response.hereNow.items) {
+  				  var checkin = data.response.hereNow.items[i];
+  				  checkins.push({name: checkin.user.firstName, photo: checkin.user.photo, isMayor: checkin.isMayor })
+  			  }
+  			  updateHereNow({herenow: data.response.hereNow.count, checkins: checkins});
+  		  }
+  	    window.setTimeout(loadHereNow, 120 * 1000 /** milliseconds */);
   	  })
   	}
   
-  	// Load in the data from a new checkin
-  	var updatePush = function(checkin) {
-  	  $('#userPic').attr('src', checkin.photo);
-  	  if (checkin.isMayor) {
-  	    $('#picWrapper').addClass('isMayor');
-  	    $('#message').html('All hail his royal highness, <span class="name">'
-  	        + checkin.name + '</span>!');
-  	  } else {
-  	    $('#picWrapper').removeClass('isMayor');
-  	    $('#message').html('Everyone say hi to your new friend, <span class="name">'
-  	        + checkin.name + '</span>. Clap, clap!');
-  	  }
-  	}
+
     
   	// Handle opening a new channel in the event that it needs to be refreshed on the fly
   	function refreshChannel(token) {
       var channel = new goog.appengine.Channel(token);
       socket = channel.open();
       socket.onopen = function() { connected = true; };
-      socket.onmessage = function(data) { 
-    	  updatePush($.parseJSON(data.data)); 
+      socket.onmessage = function(data) {
+    	  var checkin = $.parseJSON(data.data);
+    	  updatePush(checkin);
+    	  updateCandle(checkin);
     	}
   	  socket.onerror = function() {
   	    socket.close();
   	    connected = false;
   	  };
-  	  socket.onclose = function() { connected = false; };
+  	  socket.onclose = function() { 
+  		  window.location.reload();
+  		};
   	}
   	
-  	var tokenParam = '';
-    if (window.location.hash.indexOf("#access_token=") == 0) {
-    	tokenParam = '?' + window.location.hash.substring(1);
+
+    
+    function doConnect(pvid){
+    	
+	    var param = '';
+	    if (window.location.hash.indexOf("#access_token=") == 0) {
+	    	param = '?' + window.location.hash.substring(1);
+	    }
+	    
+	    if (pvid) {
+	    	param = '?vid='+pvid;
+	    }
+    	    
+    	$.getJSON('/connect' + param, function(data) {
+    		console.log(data);
+    		$('#vidDiv').hide();
+	      if (data.authed) {
+	        $('#loading').hide()
+	        if (data.vid == null || data.vid.length !=24) {
+	          $('#vidForm').submit(function(e){
+	            doConnect($('#vidInput').val());
+	            e.preventDefault();
+	          });
+	          $('#vidDiv').show();
+	        } else {
+	          refreshChannel(data.token);
+	          vid = data.vid;
+	          accessToken = data.accessToken;
+	          $('#placeName').text(data.venuename);
+	          if (DEVEL) {
+	            updateHereNow({checkins: devList, herenow: devList.length });
+	          } else {
+	            loadHereNow(); 
+	          }
+	         
+	          $('#herenow').show();
+	        }
+
+	      } else {
+	        if (data.loginUrl) {
+	          $('#loading').text('redirecting to login');
+	          window.location = data.loginUrl;
+	        } else {
+	          $('#loading').hide()
+	          $('#connectLink').attr('href', data.connectUrl);
+	          $('#connect').show();
+	        }
+	      }
+	    });
     }
   	
-	  $.getJSON('/connect' + tokenParam, function(data) {
-		  
-		  if (data.authed){
-			  if (data.loginUrl) {
-				  $('#loading').text('redirecting to login');
-				  window.location = data.loginUrl;
-			  } else {
-				  $('#loading').hide()
-	        refreshChannel(data.token);
-				  vid = data.vid;
-				  $('#placeName').text(data.venuename);
-	        loadHereNow(true);
-	        $('#herenow').show();
-			  }
-		  } else {
-			  $('#loading').hide()
-			  $('#connectLink').attr('href', data.connectUrl);
-			  $('#connect').show();
-		  }
-	  });
+    doConnect();
+	  
   });
 </script>
 </body>

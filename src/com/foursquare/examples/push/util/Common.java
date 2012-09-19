@@ -19,10 +19,8 @@ import fi.foyt.foursquare.api.FoursquareApi;
 public class Common {
   private final static String CLIENT_ID = "5QPIVV2NKZMIN3JTDTEZU4XNN3GY414EQBLFU3LEUIP5SAIE";
   private final static String CLIENT_SECRET = "DA2HR5LSGY2PSN3QIDABEVPWLJH4LRFUCGLJJSPTA44ERQKN";
-  private final static String CALLBACK = "https://4sqmenorah.appspot.com/user";
+  private final static String CALLBACK = "https://4sqmenorah.appspot.com/";
   public final static String PUSH_SECRET = "TIXBVE3J4QB1B2GNA0T3GQY3A1XG3ENOI0YR0KJJQRSS1ZQW";
-  public final static String TARGET_VENUE = "4b888a6af964a5205dff31e3";
-  public final static String TARGET_VENUE_NAME = "hoffsilo";
   
   public static FoursquareApi getApi() { return getApi(null); }
   public static FoursquareApi getApi(String token) {
@@ -34,8 +32,8 @@ public class Common {
     User googler = getGoogleUser();
     if (googler != null) {
       LinkedUser luser = LinkedUser.loadOrCreate(pm, googler.getUserId());
-      if (luser.foursquareAuth() != null) {
-        return getApi(luser.foursquareAuth());
+      if (luser.foursquareAuth != null) {
+        return getApi(luser.foursquareAuth);
       }
     }
     
